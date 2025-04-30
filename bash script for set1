@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Fetch top 10 CPU/memory-consuming applications
+top_apps() {
+    echo "🔹 Top 10 Applications Consuming Most CPU & Memory:"
+    ps aux --sort=-%cpu | head -11
+}
+
+# Network Monitoring
+network_stats() {
+    echo "🔹 Network Statistics:"
+    echo "Concurrent Connections: $(netstat -an | wc -l)"
+    echo "Packet Drops Since Boot: $(cat /proc/net/snmp | grep 'Ip:' | awk '{print $11}')"
+    echo "Data Transferred (MB):"
+    ifconfig | awk '/RX bytes/ {print "Received:", $2/1024/1024, "MB"} /TX bytes/ {print "Transmitted:", $6/1024/1024, "MB"}'
+}
+
+# Disk Usage
+disk_usage() {
+    echo "🔹 Disk Usage:"
+    df -h | awk '{ if ($5 > 80) print "⚠ High Usage:", $0; else print $0; }'
+}
+
+# System Load
+system_load() {
+    echo "🔹 System Load:"
+    uptime
+    echo "CPU Usage Breakdown:"
+    mpstat
+}
+
+# Memory Usage
+memory_usage() {
+    echo "🔹 Memory Stats:"
+    free -h
+    echo "Swap Usage:"
+    swapon --summary
+}
+
+# Process Monitoring
+process_monitoring() {
+    echo "🔹 Active Processes: $(ps aux | wc -l)"
+    echo "Top 5 CPU-Intensive Processes:"
+    ps aux --sort=-%cpu | head -6
+}
+
+# Service Monitoring
+service_monitoring() {
+    echo "🔹 Essential Services Status:"
+    systemctl is-active sshd nginx apache2 iptables --no-pager
+}
+
+# Custom Dashboard with CLI Switches
+case "$1" in
+    -cpu) top_apps ;;
+    -network) network_stats ;;
+    -disk) disk_usage ;;
+    -load) system_load ;;
+    -memory) memory_usage ;;
+    -processes) process_monitoring ;;
+    -services) service_monitoring ;;
+    *)
+        echo "Usage: $0 -cpu | -network | -disk | -load | -memory | -processes | -services"
+        ;;
+esac
