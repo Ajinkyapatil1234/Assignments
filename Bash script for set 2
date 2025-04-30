@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Security Audit and Hardening Script
+# Author: Your Name
+# Description: Automates security audits and hardening for Linux servers.
+
+### USER & GROUP AUDIT ###
+user_audit() {
+    echo "🔹 Checking Users & Groups..."
+    echo "All Users:"
+    cut -d: -f1 /etc/passwd
+    echo "Users with UID 0 (root privileges):"
+    awk -F: '($3 == 0) {print}' /etc/passwd
+}
+
+### FILE & DIRECTORY PERMISSIONS ###
+file_audit() {
+    echo "🔹 Scanning for World-Writable Files..."
+    find / -type f -perm -o+w -exec ls -lh {} \; 2>/dev/null
+    echo "🔹 Checking SUID & SGID Files..."
+    find / -type f -perm -u+s -exec ls -lh {} \; 2>/dev/null
+}
+
+### SERVICE AUDIT ###
+service_audit() {
+    echo "🔹 Checking Running Services..."
+    systemctl list-units --type=service --state=running
+    echo "🔹 Checking Unnecessary Listening Ports..."
+    netstat -tulnp
+}
+
+### FIREWALL & NETWORK SECURITY ###
+firewall_check() {
+    echo "🔹 Checking Firewall Status..."
+    ufw status || iptables -L
+    echo "🔹 Reporting Open Ports..."
+    netstat -tuln
+}
+
+### PUBLIC vs PRIVATE IP CHECK ###
+ip_check() {
+    echo "🔹 Identifying Public & Private IPs..."
+    ip -4 addr show | awk '/inet/ {print $2}'
+    ip -6 addr show | awk '/inet/ {print $2}'
+}
+
+### SECURITY UPDATES & PATCHING ###
+security_updates() {
+    echo "🔹 Checking for Security Updates..."
+    sudo apt list --upgradable
+}
+
+### LOG MONITORING ###
+log_monitor() {
+    echo "🔹 Checking for Suspicious Login Attempts..."
+    grep "Failed password" /var/log/auth.log | tail -10
+}
+
+### SERVER HARDENING STEPS ###
+server_hardening() {
+    echo "🔹 Hardening SSH Configuration..."
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+    systemctl restart sshd
+    echo "🔹 Securing Bootloader..."
+    echo 'set superusers="admin"' >> /etc/grub.d/40_custom
+    echo 'password_pbkdf2 admin grub.pbkdf2.sha512.10000.XYZ' >> /etc/grub.d/40_custom
+    update-grub
+}
+
+### REPORTING ###
+generate_report() {
+    echo "🔹 Generating Security Report..."
+    user_audit > security_report.txt
+    file_audit >> security_report.txt
+    service_audit >> security_report.txt
+    firewall_check >> security_report.txt
+    ip_check >> security_report.txt
+    security_updates >> security_report.txt
+    log_monitor >> security_report.txt
+    echo "Report saved as security_report.txt."
+}
+
+### MENU FOR RUNNING MODULES ###
+case "$1" in
+    -users) user_audit ;;
+    -files) file_audit ;;
+    -services) service_audit ;;
+    -firewall) firewall_check ;;
+    -ips) ip_check ;;
+    -updates) security_updates ;;
+    -logs) log_monitor ;;
+    -harden) server_hardening ;;
+    -report) generate_report ;;
+    *)
+        echo "Usage: $0 -users | -files | -services | -firewall | -ips | -updates | -logs | -harden | -report"
+        ;;
+esac
